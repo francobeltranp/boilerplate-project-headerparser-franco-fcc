@@ -1,65 +1,73 @@
 'use strict';
-require('dotenv').config();
-const express     = require('express');
-const bodyParser  = require('body-parser');
-const cors        = require('cors');
 
-const apiRoutes         = require('./routes/api.js');
-const fccTestingRoutes  = require('./routes/fcctesting.js');
-const runner            = require('./test-runner');
+require('dotenv').config();
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const helmet = require('helmet');
+const mongoose = require('mongoose');
+
+const fccTestingRoutes = require('./routes/fcctesting.js');
+const apiRoutes = require('./routes/api.js');
+const runner = require('./test-runner');
 
 const app = express();
 
+// Seguridad con Helmet
+app.use(helmet());
+
+app.use(helmet.frameguard({ action: 'sameorigin' }));       // Solo iframes del mismo origen
+app.use(helmet.dnsPrefetchControl({ allow: false }));       // Deshabilitar DNS prefetch
+app.use(helmet.referrerPolicy({ policy: 'same-origin' }));  // Referrer solo same-origin
+
+// Conexión a MongoDB con Mongoose
+const mongoUri = process.env.DB;
+mongoose.set('strictQuery', false);
+
+mongoose.connect(mongoUri)
+  .then(() => console.log('Conectado a MongoDB'))
+  .catch(err => console.error('Error conectando a MongoDB:', err.message));
+
 app.use('/public', express.static(process.cwd() + '/public'));
 
-app.use(cors({origin: '*'})); //For FCC testing purposes only
+app.use(cors({ origin: '*' })); // Para FCC
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-//Sample front-end
-app.route('/b/:board/')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/board.html');
-  });
-app.route('/b/:board/:threadid')
-  .get(function (req, res) {
-    res.sendFile(process.cwd() + '/views/thread.html');
-  });
-
-//Index page (static HTML)
+// Index
 app.route('/')
   .get(function (req, res) {
     res.sendFile(process.cwd() + '/views/index.html');
   });
 
-//For FCC testing purposes
+// Rutas FCC testing
 fccTestingRoutes(app);
 
-//Routing for API 
+// Rutas API
 apiRoutes(app);
 
-//404 Not Found Middleware
-app.use(function(req, res, next) {
+// 404
+app.use(function (req, res, next) {
   res.status(404)
     .type('text')
     .send('Not Found');
 });
 
-//Start our server and tests!
+// Server + tests
 const listener = app.listen(process.env.PORT || 3000, function () {
   console.log('Your app is listening on port ' + listener.address().port);
-  if(process.env.NODE_ENV==='test') {
+  if (process.env.NODE_ENV === 'test') {
     console.log('Running Tests...');
     setTimeout(function () {
       try {
         runner.run();
-      } catch(e) {
+      } catch (e) {
         console.log('Tests are not valid:');
         console.error(e);
       }
-    }, 1500);
+    }, 3500);
   }
 });
 
-module.exports = app; //for testing
+module.exports = app;
