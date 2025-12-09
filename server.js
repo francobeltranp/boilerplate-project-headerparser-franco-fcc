@@ -20,13 +20,16 @@ app.use(helmet.frameguard({ action: 'sameorigin' }));       // Solo iframes del 
 app.use(helmet.dnsPrefetchControl({ allow: false }));       // Deshabilitar DNS prefetch
 app.use(helmet.referrerPolicy({ policy: 'same-origin' }));  // Referrer solo same-origin
 
-// Conexión a MongoDB con Mongoose
+// Conexión a MongoDB con Mongoose (opcional)
 const mongoUri = process.env.DB;
-mongoose.set('strictQuery', false);
-
-mongoose.connect(mongoUri)
-  .then(() => console.log('Conectado a MongoDB'))
-  .catch(err => console.error('Error conectando a MongoDB:', err.message));
+if (mongoUri) {
+  mongoose.set('strictQuery', false);
+  mongoose.connect(mongoUri)
+    .then(() => console.log('Conectado a MongoDB'))
+    .catch(err => console.error('Error conectando a MongoDB:', err.message));
+} else {
+  console.log('MongoDB URI not provided, skipping database connection');
+}
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
